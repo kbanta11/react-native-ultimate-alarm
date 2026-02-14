@@ -22,13 +22,25 @@ export default function AlarmTest() {
         }
 
         // Check if launched from alarm
+        // IMPORTANT: This is where you'd navigate to a custom screen
+        // For example: router.push('/alarm-ringing')
+        // See docs/CUSTOM-ALARM-UI.md for platform-specific customization options
         const launchPayload = await UltimateAlarm.getLaunchPayload();
         if (launchPayload) {
           Alert.alert(
             'Alarm Triggered!',
-            `Alarm: ${launchPayload.alarmId}\nAction: ${launchPayload.action}`,
+            `Alarm: ${launchPayload.alarmId}\nAction: ${launchPayload.action}\n\nOn a real app, you would navigate to your custom screen here.`,
             [{ text: 'OK' }]
           );
+
+          // Example navigation (uncomment if using Expo Router):
+          // router.push({
+          //   pathname: '/alarm-ringing',
+          //   params: {
+          //     alarmId: launchPayload.alarmId,
+          //     ...launchPayload.data,
+          //   },
+          // });
         }
 
         // Load existing alarms
@@ -84,9 +96,14 @@ export default function AlarmTest() {
           enabled: true,
           duration: 300,
         },
+        // Custom data is available in launchPayload.data
+        // Use this to control navigation, themes, etc.
         data: {
           test: true,
           timestamp: Date.now(),
+          screen: 'alarm-ringing', // Which screen to show
+          theme: 'morning',         // Custom theme
+          backgroundColor: '#1a1a2e', // Custom colors
         },
       });
 

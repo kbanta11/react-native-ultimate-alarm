@@ -22,10 +22,35 @@ Stop juggling multiple packages and platform-specific code. `react-native-ultima
 
 ## Installation
 
+### From npm (Coming Soon)
+
 ```bash
 npm install react-native-ultimate-alarm
 # or
 yarn add react-native-ultimate-alarm
+```
+
+### Local Development
+
+To use this package locally before publishing:
+
+```bash
+# In your app directory
+npm install /path/to/react-native-ultimate-alarm
+
+# Or with Expo
+npx expo install /path/to/react-native-ultimate-alarm
+```
+
+**Important:** Since this package has native code, you must rebuild:
+
+```bash
+# For Expo
+npx expo prebuild --clean
+npx expo run:android  # or run:ios
+
+# For bare React Native
+npx react-native run-android  # or run-ios
 ```
 
 ### iOS Setup
@@ -88,6 +113,67 @@ if (launchPayload) {
   console.log('Launched by alarm:', launchPayload.alarmId);
 }
 ```
+
+## Customizing the Alarm Experience
+
+### Custom Alarm UI
+
+The level of UI customization depends on the platform:
+
+| Platform | Alarm Screen Customization | Post-Alarm Customization |
+|----------|---------------------------|--------------------------|
+| **Android** | ✅ **Full control** - Create custom React Native alarm screen | ✅ Yes |
+| **iOS 16+** | ❌ System UI only (like Clock app) | ✅ Yes - App auto-launches |
+| **iOS <16** | ❌ Notification only | ⚠️ Manual tap required |
+
+**Example - Custom alarm screen on Android:**
+
+```typescript
+// app/alarm-ringing.tsx
+export default function AlarmRingingScreen() {
+  const params = useLocalSearchParams();
+
+  return (
+    <View style={{ flex: 1, backgroundColor: '#1a1a2e' }}>
+      <Text style={styles.title}>{params.title}</Text>
+      <Button title="Dismiss" onPress={handleDismiss} />
+      <Button title="Snooze 5 min" onPress={handleSnooze} />
+    </View>
+  );
+}
+```
+
+**Example - Post-alarm navigation (all platforms):**
+
+```typescript
+// App.tsx - Detect alarm launch and navigate
+useEffect(() => {
+  async function checkAlarmLaunch() {
+    const payload = await UltimateAlarm.getLaunchPayload();
+    if (payload) {
+      // Navigate to your custom screen
+      router.push({
+        pathname: '/morning-routine',
+        params: payload.data,
+      });
+    }
+  }
+  checkAlarmLaunch();
+}, []);
+```
+
+**📖 See [Custom Alarm UI Guide](./docs/CUSTOM-ALARM-UI.md) for detailed platform-specific customization options.**
+
+### Alarm Management Component
+
+Want a ready-to-use alarm manager? See our complete component with:
+- ✅ View all alarms
+- ✅ Create new alarms
+- ✅ Edit existing alarms
+- ✅ Delete alarms
+- ✅ Beautiful UI with time picker, snooze settings, and weekday selector
+
+**📖 See [Alarm Manager Component](./docs/ALARM-MANAGER-COMPONENT.md) for the full copy-paste ready component.**
 
 ## Usage
 
@@ -226,6 +312,20 @@ await UltimateAlarm.snoozeAlarm('morning-alarm', 10); // 10 minutes
 | Repeating alarms | ✅ | ✅ | ❌ |
 | Survives app kill | ✅ | ✅ | ✅ |
 | Survives reboot | ✅ | ✅ | ✅ |
+| **Custom alarm screen** | ✅ Full control | ❌ System UI | ❌ Notification |
+
+## Documentation
+
+### 📚 Complete Guides
+
+- **[API Reference](./docs/API.md)** - Complete API documentation with all methods, parameters, and examples
+- **[Permissions Guide](./docs/PERMISSIONS.md)** - Platform-specific permission setup and troubleshooting
+- **[Capabilities Guide](./docs/CAPABILITIES.md)** - Feature matrix and platform differences
+- **[Usage Examples](./docs/EXAMPLES.md)** - Practical examples for common scenarios
+- **[Custom Alarm UI](./docs/CUSTOM-ALARM-UI.md)** - How to customize the alarm experience per platform
+- **[Alarm Manager Component](./docs/ALARM-MANAGER-COMPONENT.md)** - Ready-to-use component for managing alarms
+- **[Quick Start Example](./docs/QUICK-START-EXAMPLE.md)** - Complete test screen for local development
+- **[Contributing](./CONTRIBUTING.md)** - Development setup and contribution guidelines
 
 ## API Reference
 
