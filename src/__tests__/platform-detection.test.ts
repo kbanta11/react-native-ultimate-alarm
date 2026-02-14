@@ -7,15 +7,17 @@ const mockNative = NativeUltimateAlarm as jest.Mocked<typeof NativeUltimateAlarm
 describe('Platform Detection', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    // Reset the cached implementation to ensure each test gets fresh detection
+    (UltimateAlarm as any).implementation = null;
   });
 
   describe('Android Platform', () => {
     beforeEach(() => {
       (Platform as any).OS = 'android';
+      (Platform as any).Version = 33;
     });
 
     it('should use alarmmanager implementation on Android', async () => {
-      mockNative.hasAlarmKit.mockResolvedValue(false);
       mockNative.getCapabilities.mockResolvedValue({
         platform: 'android',
         implementation: 'alarmmanager',
@@ -32,7 +34,8 @@ describe('Platform Detection', () => {
 
       expect(caps.platform).toBe('android');
       expect(caps.implementation).toBe('alarmmanager');
-      expect(mockNative.hasAlarmKit).toHaveBeenCalled();
+      // hasAlarmKit should NOT be called on Android
+      expect(mockNative.hasAlarmKit).not.toHaveBeenCalled();
     });
 
     it('should report all Android features available', async () => {
@@ -64,6 +67,10 @@ describe('Platform Detection', () => {
     });
 
     describe('iOS 16+ with AlarmKit', () => {
+      beforeEach(() => {
+        (Platform as any).Version = '16.0';
+      });
+
       it('should detect AlarmKit availability', async () => {
         mockNative.hasAlarmKit.mockResolvedValue(true);
         mockNative.getCapabilities.mockResolvedValue({
@@ -85,6 +92,7 @@ describe('Platform Detection', () => {
       });
 
       it('should use alarmkit implementation when available', async () => {
+        (Platform as any).Version = '16.0';
         mockNative.hasAlarmKit.mockResolvedValue(true);
         mockNative.scheduleAlarm.mockResolvedValue(undefined);
 
@@ -105,8 +113,11 @@ describe('Platform Detection', () => {
     });
 
     describe('iOS <16 with Notifications', () => {
+      beforeEach(() => {
+        (Platform as any).Version = '15.0';
+      });
+
       it('should fall back to notifications when AlarmKit unavailable', async () => {
-        mockNative.hasAlarmKit.mockResolvedValue(false);
         mockNative.getCapabilities.mockResolvedValue({
           platform: 'ios',
           implementation: 'notification',
@@ -127,10 +138,12 @@ describe('Platform Detection', () => {
         expect(caps.implementation).toBe('notification');
         expect(caps.features.truePersistentAlarm).toBe(false);
         expect(caps.limitations.length).toBeGreaterThan(0);
+        // hasAlarmKit should NOT be called on iOS < 16
+        expect(mockNative.hasAlarmKit).not.toHaveBeenCalled();
       });
 
       it('should use notification implementation when AlarmKit not available', async () => {
-        mockNative.hasAlarmKit.mockResolvedValue(false);
+        (Platform as any).Version = '15.0';
         mockNative.scheduleAlarm.mockResolvedValue(undefined);
 
         const alarmConfig = {

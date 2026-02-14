@@ -147,6 +147,12 @@ class UltimateAlarmClass {
    * ```
    */
   async scheduleAlarm(config: AlarmConfig): Promise<void> {
+    // Validate alarm time is in the future
+    const now = new Date();
+    if (config.time <= now) {
+      throw new Error('Alarm time must be in the future');
+    }
+
     const impl = await this.detectImplementation();
     return NativeUltimateAlarm.scheduleAlarm(impl, config);
   }

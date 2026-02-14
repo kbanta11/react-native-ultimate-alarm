@@ -23,6 +23,7 @@ jest.mock('./src/NativeUltimateAlarm', () => ({
 jest.mock('react-native', () => ({
   Platform: {
     OS: 'ios',
+    Version: '16.0',
     select: jest.fn((obj) => obj.ios),
   },
   NativeModules: {},

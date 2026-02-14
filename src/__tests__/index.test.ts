@@ -8,6 +8,11 @@ const mockNative = NativeUltimateAlarm as jest.Mocked<typeof NativeUltimateAlarm
 describe('UltimateAlarm', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    // Reset the cached implementation to ensure each test gets fresh detection
+    (UltimateAlarm as any).implementation = null;
+    // Default to Android for most tests
+    (Platform as any).OS = 'android';
+    (Platform as any).Version = 33;
   });
 
   describe('getCapabilities', () => {
@@ -34,6 +39,9 @@ describe('UltimateAlarm', () => {
     });
 
     it('should detect AlarmKit on iOS 16+', async () => {
+      (Platform as any).OS = 'ios';
+      (Platform as any).Version = '16.0';
+
       mockNative.hasAlarmKit.mockResolvedValue(true);
       mockNative.getCapabilities.mockResolvedValue({
         platform: 'ios',
