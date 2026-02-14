@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git check-ignore:*)",
+      "Bash(test:*)",
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nAdd .gitignore for worktrees and common files\n\n- Add .worktrees/ to prevent tracking worktree contents\n- Add standard ignores for Node.js, build output, IDE, and OS files\n\nCo-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git worktree add:*)",
+      "Bash(npm install:*)",
+      "Bash(npm run typecheck:*)"
+    ]
+  }
+}
