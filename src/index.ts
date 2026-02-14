@@ -284,27 +284,6 @@ class UltimateAlarmClass {
   ): { remove: () => void } {
     return NativeUltimateAlarm.addEventListener(event, callback);
   }
-
-  /**
-   * Remove event listener
-   *
-   * @param event - Event type ('dismiss' or 'snooze')
-   * @param callback - Event handler to remove
-   *
-   * @example
-   * ```typescript
-   * const handler = (event) => console.log(event);
-   * UltimateAlarm.addEventListener('dismiss', handler);
-   * // Later...
-   * UltimateAlarm.removeEventListener('dismiss', handler);
-   * ```
-   */
-  removeEventListener(
-    event: 'dismiss' | 'snooze',
-    callback: (event: AlarmEvent) => void
-  ): void {
-    return NativeUltimateAlarm.removeEventListener(event, callback);
-  }
 }
 
 /**

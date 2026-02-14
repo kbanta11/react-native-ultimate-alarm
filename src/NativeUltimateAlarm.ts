@@ -125,6 +125,7 @@ class NativeUltimateAlarmModule {
 
   /**
    * Add event listener for alarm events
+   * Returns a subscription object with a remove() method
    */
   addEventListener(
     event: 'dismiss' | 'snooze',
@@ -143,16 +144,6 @@ class NativeUltimateAlarmModule {
     return {
       remove: () => subscription.remove(),
     };
-  }
-
-  /**
-   * Remove event listener
-   */
-  removeEventListener(
-    event: 'dismiss' | 'snooze',
-    callback: (event: AlarmEvent) => void
-  ): void {
-    eventEmitter.removeListener(`UltimateAlarm.${event}`, callback);
   }
 }
 
