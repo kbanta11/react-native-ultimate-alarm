@@ -45,14 +45,10 @@ class BootReceiver : BroadcastReceiver() {
 
         for (alarmConfig in allAlarms) {
             try {
-                val id = alarmConfig.getString("id") ?: continue
-                val timeMs = if (alarmConfig.hasKey("time")) {
-                    alarmConfig.getDouble("time").toLong()
-                } else {
-                    continue
-                }
-                val title = alarmConfig.getString("title") ?: "Alarm"
-                val message = alarmConfig.getString("message") ?: ""
+                val id = alarmConfig["id"] as? String ?: continue
+                val timeMs = (alarmConfig["time"] as? Double)?.toLong() ?: continue
+                val title = alarmConfig["title"] as? String ?: "Alarm"
+                val message = alarmConfig["message"] as? String ?: ""
 
                 // Skip past alarms
                 if (timeMs <= now) {
@@ -64,20 +60,14 @@ class BootReceiver : BroadcastReceiver() {
                 }
 
                 // Parse snooze config
-                val snoozeConfig = if (alarmConfig.hasKey("snooze")) {
-                    alarmConfig.getMap("snooze")
-                } else {
-                    null
-                }
-                val snoozeEnabled = snoozeConfig?.getBoolean("enabled") ?: false
-                val snoozeDuration = snoozeConfig?.getInt("duration") ?: 300
+                @Suppress("UNCHECKED_CAST")
+                val snoozeConfig = alarmConfig["snooze"] as? Map<String, Any?>
+                val snoozeEnabled = snoozeConfig?.get("enabled") as? Boolean ?: false
+                val snoozeDuration = (snoozeConfig?.get("duration") as? Double)?.toInt() ?: 300
 
                 // Parse custom data
-                val data = if (alarmConfig.hasKey("data")) {
-                    alarmConfig.getMap("data")
-                } else {
-                    null
-                }
+                @Suppress("UNCHECKED_CAST")
+                val data = alarmConfig["data"] as? Map<String, Any?>
 
                 // Create alarm intent
                 val alarmIntent = Intent(context, AlarmReceiver::class.java).apply {
@@ -88,7 +78,7 @@ class BootReceiver : BroadcastReceiver() {
                     putExtra("snoozeEnabled", snoozeEnabled)
                     putExtra("snoozeDuration", snoozeDuration)
                     if (data != null) {
-                        putExtra("data", data.toHashMap().toString())
+                        putExtra("data", data.toString())
                     }
                 }
 

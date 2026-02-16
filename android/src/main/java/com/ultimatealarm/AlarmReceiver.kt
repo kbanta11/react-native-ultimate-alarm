@@ -5,7 +5,6 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.util.Log
-import com.facebook.react.modules.core.DeviceEventManagerModule.RCTDeviceEventEmitter
 
 class AlarmReceiver : BroadcastReceiver() {
 
@@ -92,26 +91,24 @@ class AlarmReceiver : BroadcastReceiver() {
     private fun emitEvent(eventName: String, alarmId: String?, action: String) {
         alarmId ?: return
 
-        val reactContext = UltimateAlarmModule.getReactContext()
+        val module = UltimateAlarmModule.getModule()
 
-        if (reactContext != null && reactContext.hasActiveCatalystInstance()) {
+        if (module != null) {
             try {
-                val eventData = com.facebook.react.bridge.Arguments.createMap().apply {
-                    putString("alarmId", alarmId)
-                    putString("action", action)
-                    putDouble("timestamp", System.currentTimeMillis().toDouble())
-                }
+                val eventData = mapOf(
+                    "alarmId" to alarmId,
+                    "action" to action,
+                    "timestamp" to System.currentTimeMillis().toDouble()
+                )
 
-                reactContext
-                    .getJSModule(RCTDeviceEventEmitter::class.java)
-                    .emit(eventName, eventData)
+                module.sendEvent(eventName, eventData)
 
                 Log.d(TAG, "Emitted event $eventName for alarm $alarmId")
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to emit event: ${e.message}")
             }
         } else {
-            Log.w(TAG, "Cannot emit event: ReactContext not available")
+            Log.w(TAG, "Cannot emit event: Module not available")
         }
     }
 }

@@ -10,6 +10,7 @@ import android.os.Build
 import android.util.Log
 import android.content.pm.PackageManager
 import java.lang.ref.WeakReference
+import org.json.JSONObject
 
 class UltimateAlarmModule : Module() {
 
@@ -294,10 +295,5 @@ class UltimateAlarmModule : Module() {
                 return@AsyncFunction null
             }
         }
-    }
-
-    // Send event to JavaScript
-    fun sendEvent(eventName: String, params: Map<String, Any?>) {
-        this.sendEvent(eventName, params)
     }
 }
