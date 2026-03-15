@@ -43,11 +43,12 @@ class AlarmService : Service() {
         val message = intent.getStringExtra("message") ?: ""
         val snoozeEnabled = intent.getBooleanExtra("snoozeEnabled", false)
         val snoozeDuration = intent.getIntExtra("snoozeDuration", 300)
+        val launchOnDismiss = intent.getBooleanExtra("launchOnDismiss", false)
 
         currentAlarmId = id
 
         // Start as foreground service
-        val notification = buildNotification(id, title, message, snoozeEnabled, snoozeDuration)
+        val notification = buildNotification(id, title, message, snoozeEnabled, snoozeDuration, launchOnDismiss)
         startForeground(NOTIFICATION_ID, notification)
 
         // Acquire wake lock
@@ -94,26 +95,43 @@ class AlarmService : Service() {
         title: String,
         message: String,
         snoozeEnabled: Boolean,
-        snoozeDuration: Int
+        snoozeDuration: Int,
+        launchOnDismiss: Boolean = false
     ): Notification {
         // Dismiss action
-        val dismissIntent = Intent(this, AlarmReceiver::class.java).apply {
-            action = AlarmReceiver.ACTION_DISMISS
-            putExtra("id", id)
+        val dismissPendingIntent = if (launchOnDismiss) {
+            // Launch the app with dismiss extras so the app can handle navigation
+            val launchIntent = packageManager.getLaunchIntentForPackage(packageName)?.apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                putExtra("alarm_action", "dismiss")
+                putExtra("alarm_id", id)
+            }
+            if (launchIntent != null) {
+                PendingIntent.getActivity(
+                    this,
+                    id.hashCode() + 1,
+                    launchIntent,
+                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
+                )
+            } else {
+                // Fallback to broadcast if launch intent unavailable
+                buildDismissBroadcast(id)
+            }
+        } else {
+            // Default: just stop the alarm via broadcast, don't open the app
+            buildDismissBroadcast(id)
         }
-        val dismissPendingIntent = PendingIntent.getBroadcast(
-            this,
-            id.hashCode() + 1,
-            dismissIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
 
         // Snooze action (if enabled)
         val snoozePendingIntent = if (snoozeEnabled) {
             val snoozeIntent = Intent(this, AlarmReceiver::class.java).apply {
                 action = AlarmReceiver.ACTION_SNOOZE
                 putExtra("id", id)
+                putExtra("title", title)
+                putExtra("message", message)
                 putExtra("snoozeDuration", snoozeDuration)
+                putExtra("snoozeEnabled", snoozeEnabled)
+                putExtra("launchOnDismiss", launchOnDismiss)
             }
             PendingIntent.getBroadcast(
                 this,
@@ -171,6 +189,19 @@ class AlarmService : Service() {
         }
 
         return builder.build()
+    }
+
+    private fun buildDismissBroadcast(id: String): PendingIntent {
+        val intent = Intent(this, AlarmReceiver::class.java).apply {
+            action = AlarmReceiver.ACTION_DISMISS
+            putExtra("id", id)
+        }
+        return PendingIntent.getBroadcast(
+            this,
+            id.hashCode() + 1,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
     }
 
     private fun acquireWakeLock() {

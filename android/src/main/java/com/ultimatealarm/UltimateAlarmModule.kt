@@ -36,8 +36,37 @@ class UltimateAlarmModule : Module() {
         // Module name - accessed as NativeModules.UltimateAlarm
         Name("UltimateAlarm")
 
-        // Events that this module can send
-        Events("onAlarmDismiss", "onAlarmSnooze")
+        // Events that this module can send (must match names used in AlarmReceiver.emitEvent)
+        Events("UltimateAlarm.dismiss", "UltimateAlarm.snooze")
+
+        // Handle new intents when the activity is already running
+        // (e.g. notification dismiss button with launchOnDismiss=true)
+        OnNewIntent { intent ->
+            val alarmAction = intent.getStringExtra("alarm_action")
+            val alarmId = intent.getStringExtra("alarm_id")
+
+            if (alarmAction != null && alarmId != null) {
+                val context = appContext.reactContext
+                if (context != null && alarmAction == "dismiss") {
+                    val serviceIntent = Intent(context, AlarmService::class.java)
+                    context.stopService(serviceIntent)
+                    Log.d(TAG, "Stopped AlarmService via onNewIntent dismiss")
+                }
+
+                // Emit the event so JS listeners can handle navigation
+                try {
+                    val eventData = mapOf(
+                        "alarmId" to alarmId,
+                        "action" to alarmAction,
+                        "timestamp" to System.currentTimeMillis().toDouble()
+                    )
+                    sendEvent("UltimateAlarm.$alarmAction", eventData)
+                    Log.d(TAG, "Emitted UltimateAlarm.$alarmAction from onNewIntent")
+                } catch (e: Exception) {
+                    Log.e(TAG, "Failed to emit event from onNewIntent: ${e.message}")
+                }
+            }
+        }
 
         /**
          * Check if AlarmKit is available (always false on Android)
@@ -147,6 +176,9 @@ class UltimateAlarmModule : Module() {
             @Suppress("UNCHECKED_CAST")
             val data = config["data"] as? Map<String, Any?>
 
+            // Parse launch-on-dismiss option
+            val launchOnDismiss = config["launchOnDismiss"] as? Boolean ?: false
+
             val now = System.currentTimeMillis()
             if (timeMs < now) {
                 throw Exception("Alarm time must be in the future")
@@ -160,6 +192,7 @@ class UltimateAlarmModule : Module() {
                 putExtra("message", message)
                 putExtra("snoozeEnabled", snoozeEnabled)
                 putExtra("snoozeDuration", snoozeDuration)
+                putExtra("launchOnDismiss", launchOnDismiss)
                 if (data != null) {
                     putExtra("data", data.toString())
                 }
@@ -181,6 +214,19 @@ class UltimateAlarmModule : Module() {
 
             storage.saveAlarm(id, config)
             Log.d(TAG, "Scheduled alarm id=$id at=$timeMs")
+        }
+
+        /**
+         * Dismiss a currently ringing alarm (stops sound and service)
+         */
+        AsyncFunction("dismissAlarm") { implementation: String, alarmId: String ->
+            val context = appContext.reactContext ?: throw Exception("React context not available")
+
+            // Stop the AlarmService (stops sound, vibration, removes notification)
+            val serviceIntent = Intent(context, AlarmService::class.java)
+            context.stopService(serviceIntent)
+
+            Log.d(TAG, "Dismissed ringing alarm id=$alarmId")
         }
 
         /**
@@ -256,12 +302,22 @@ class UltimateAlarmModule : Module() {
             val message = (alarm["message"] as? String ?: "") + " (Snoozed)"
             val snoozeId = "$alarmId-snooze-${System.currentTimeMillis()}"
 
+            // Retrieve snooze/launch config from the stored alarm
+            @Suppress("UNCHECKED_CAST")
+            val snoozeConfig = alarm["snooze"] as? Map<String, Any?>
+            val snoozeEnabled = snoozeConfig?.get("enabled") as? Boolean ?: true
+            val snoozeDuration = (snoozeConfig?.get("duration") as? Double)?.toInt() ?: (minutes * 60)
+            val launchOnDismiss = alarm["launchOnDismiss"] as? Boolean ?: false
+
             val alarmIntent = Intent(context, AlarmReceiver::class.java).apply {
                 action = AlarmReceiver.ACTION_ALARM
                 putExtra("id", snoozeId)
                 putExtra("title", title)
                 putExtra("message", message)
                 putExtra("originalId", alarmId)
+                putExtra("snoozeEnabled", snoozeEnabled)
+                putExtra("snoozeDuration", snoozeDuration)
+                putExtra("launchOnDismiss", launchOnDismiss)
             }
 
             val pendingIntent = PendingIntent.getBroadcast(
@@ -287,6 +343,39 @@ class UltimateAlarmModule : Module() {
          * Get launch payload if app was launched by alarm
          */
         AsyncFunction("getLaunchPayload") { implementation: String ->
+            val context = appContext.reactContext ?: throw Exception("React context not available")
+
+            // First check if the activity was launched with alarm_action extras
+            // (e.g. from notification dismiss/snooze buttons that use PendingIntent.getActivity)
+            val activity = appContext.currentActivity
+            val activityIntent = activity?.intent
+            val alarmAction = activityIntent?.getStringExtra("alarm_action")
+            val alarmId = activityIntent?.getStringExtra("alarm_id")
+
+            if (alarmAction != null && alarmId != null) {
+                // Clear the extras so they don't fire again
+                activityIntent.removeExtra("alarm_action")
+                activityIntent.removeExtra("alarm_id")
+
+                // If dismiss, stop the alarm service
+                if (alarmAction == "dismiss") {
+                    val serviceIntent = Intent(context, AlarmService::class.java)
+                    context.stopService(serviceIntent)
+                    Log.d(TAG, "Stopped AlarmService via activity dismiss intent")
+                }
+
+                // Build payload from activity extras
+                val payload = mapOf(
+                    "alarmId" to alarmId,
+                    "action" to alarmAction,
+                    "timestamp" to System.currentTimeMillis()
+                )
+                // Also clear any stored payload to avoid double-handling
+                storage.clearLaunchPayload()
+                return@AsyncFunction payload
+            }
+
+            // Fall back to stored payload (from AlarmReceiver)
             val payload = storage.getLaunchPayload()
             if (payload != null) {
                 storage.clearLaunchPayload()

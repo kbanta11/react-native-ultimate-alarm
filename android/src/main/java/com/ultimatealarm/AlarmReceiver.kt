@@ -1,5 +1,7 @@
 package com.ultimatealarm
 
+import android.app.AlarmManager
+import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -56,11 +58,59 @@ class AlarmReceiver : BroadcastReceiver() {
                 val serviceIntent = Intent(context, AlarmService::class.java)
                 context.stopService(serviceIntent)
 
-                // Emit snooze event
-                emitEvent("UltimateAlarm.snooze", id, "snooze")
+                // Schedule a new alarm after the snooze duration
+                val snoozeDuration = intent.getIntExtra("snoozeDuration", 300)
+                val title = intent.getStringExtra("title") ?: "Alarm"
+                val message = intent.getStringExtra("message") ?: ""
+                val snoozeEnabled = intent.getBooleanExtra("snoozeEnabled", true)
+                val launchOnDismiss = intent.getBooleanExtra("launchOnDismiss", false)
+                val snoozeId = "$id-snooze-${System.currentTimeMillis()}"
 
-                // The actual snooze scheduling is handled by UltimateAlarmModule.snoozeAlarm()
-                // which will be called by the React Native layer after receiving this event
+                val alarmIntent = Intent(context, AlarmReceiver::class.java).apply {
+                    this.action = ACTION_ALARM
+                    putExtra("id", snoozeId)
+                    putExtra("title", title)
+                    putExtra("message", "$message (Snoozed)")
+                    putExtra("snoozeEnabled", snoozeEnabled)
+                    putExtra("snoozeDuration", snoozeDuration)
+                    putExtra("launchOnDismiss", launchOnDismiss)
+                }
+
+                val pendingIntent = PendingIntent.getBroadcast(
+                    context,
+                    snoozeId.hashCode(),
+                    alarmIntent,
+                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                )
+
+                val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+                val triggerAt = System.currentTimeMillis() + snoozeDuration * 1000L
+
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                    alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAt, pendingIntent)
+                } else {
+                    alarmManager.setExact(AlarmManager.RTC_WAKEUP, triggerAt, pendingIntent)
+                }
+
+                // Save the snoozed alarm to storage so JS snoozeAlarm() can find it later
+                val storage = AlarmStorage(context)
+                val snoozeConfig = mapOf<String, Any?>(
+                    "id" to snoozeId,
+                    "title" to title,
+                    "message" to "$message (Snoozed)",
+                    "time" to triggerAt.toDouble(),
+                    "snooze" to mapOf(
+                        "enabled" to snoozeEnabled,
+                        "duration" to snoozeDuration.toDouble()
+                    ),
+                    "launchOnDismiss" to launchOnDismiss
+                )
+                storage.saveAlarm(snoozeId, snoozeConfig)
+
+                Log.d(TAG, "Snoozed alarm $id for ${snoozeDuration}s, will re-trigger as $snoozeId")
+
+                // Emit snooze event to JS (if app is running)
+                emitEvent("UltimateAlarm.snooze", id, "snooze")
             }
         }
     }
