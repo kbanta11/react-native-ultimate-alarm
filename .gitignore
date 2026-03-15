@@ -11,9 +11,10 @@ android/build/
 ios/build/
 *.tgz
 
-# IDE
+# IDE & tools
 .vscode/
 .idea/
+.claude/
 *.swp
 *.swo
 
