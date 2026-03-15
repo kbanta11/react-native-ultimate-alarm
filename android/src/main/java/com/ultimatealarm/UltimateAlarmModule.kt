@@ -10,6 +10,7 @@ import android.os.Build
 import android.util.Log
 import android.content.pm.PackageManager
 import java.lang.ref.WeakReference
+import java.util.Calendar
 import org.json.JSONObject
 
 class UltimateAlarmModule : Module() {
@@ -51,6 +52,20 @@ class UltimateAlarmModule : Module() {
                     val serviceIntent = Intent(context, AlarmService::class.java)
                     context.stopService(serviceIntent)
                     Log.d(TAG, "Stopped AlarmService via onNewIntent dismiss")
+
+                    // Reschedule if this is a repeating alarm
+                    val repeatWeekdays = intent.getIntArrayExtra("repeatWeekdays")
+                    val timeOfDayMs = intent.getLongExtra("timeOfDayMs", 0)
+                    if (repeatWeekdays != null && repeatWeekdays.isNotEmpty() && timeOfDayMs > 0) {
+                        AlarmReceiver.scheduleNextRepeatAlarm(
+                            context, alarmId, repeatWeekdays, timeOfDayMs,
+                            intent.getStringExtra("title") ?: "Alarm",
+                            intent.getStringExtra("message") ?: "",
+                            intent.getBooleanExtra("snoozeEnabled", false),
+                            intent.getIntExtra("snoozeDuration", 300),
+                            intent.getBooleanExtra("launchOnDismiss", false)
+                        )
+                    }
                 }
 
                 // Emit the event so JS listeners can handle navigation
@@ -88,7 +103,7 @@ class UltimateAlarmModule : Module() {
                     "bypassSilentMode" to true,
                     "persistentSound" to true,
                     "customSound" to false,
-                    "repeatAlarms" to false
+                    "repeatAlarms" to true
                 ),
                 "limitations" to if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                     listOf("Requires SCHEDULE_EXACT_ALARM permission on Android 12+")
@@ -179,6 +194,19 @@ class UltimateAlarmModule : Module() {
             // Parse launch-on-dismiss option
             val launchOnDismiss = config["launchOnDismiss"] as? Boolean ?: false
 
+            // Parse repeat config
+            @Suppress("UNCHECKED_CAST")
+            val repeatConfig = config["repeat"] as? Map<String, Any?>
+            val repeatWeekdays = (repeatConfig?.get("weekdays") as? List<*>)
+                ?.mapNotNull { (it as? Double)?.toInt() }
+                ?: emptyList()
+
+            // Compute time-of-day in milliseconds for repeat rescheduling
+            val calendar = Calendar.getInstance().apply { timeInMillis = timeMs }
+            val timeOfDayMs = (calendar.get(Calendar.HOUR_OF_DAY) * 3600L +
+                calendar.get(Calendar.MINUTE) * 60L +
+                calendar.get(Calendar.SECOND)) * 1000L
+
             val now = System.currentTimeMillis()
             if (timeMs < now) {
                 throw Exception("Alarm time must be in the future")
@@ -193,6 +221,10 @@ class UltimateAlarmModule : Module() {
                 putExtra("snoozeEnabled", snoozeEnabled)
                 putExtra("snoozeDuration", snoozeDuration)
                 putExtra("launchOnDismiss", launchOnDismiss)
+                if (repeatWeekdays.isNotEmpty()) {
+                    putExtra("repeatWeekdays", repeatWeekdays.toIntArray())
+                }
+                putExtra("timeOfDayMs", timeOfDayMs)
                 if (data != null) {
                     putExtra("data", data.toString())
                 }
@@ -362,6 +394,20 @@ class UltimateAlarmModule : Module() {
                     val serviceIntent = Intent(context, AlarmService::class.java)
                     context.stopService(serviceIntent)
                     Log.d(TAG, "Stopped AlarmService via activity dismiss intent")
+
+                    // Reschedule if this is a repeating alarm
+                    val repeatWeekdays = activityIntent.getIntArrayExtra("repeatWeekdays")
+                    val timeOfDayMs = activityIntent.getLongExtra("timeOfDayMs", 0)
+                    if (repeatWeekdays != null && repeatWeekdays.isNotEmpty() && timeOfDayMs > 0) {
+                        AlarmReceiver.scheduleNextRepeatAlarm(
+                            context, alarmId, repeatWeekdays, timeOfDayMs,
+                            activityIntent.getStringExtra("title") ?: "Alarm",
+                            activityIntent.getStringExtra("message") ?: "",
+                            activityIntent.getBooleanExtra("snoozeEnabled", false),
+                            activityIntent.getIntExtra("snoozeDuration", 300),
+                            activityIntent.getBooleanExtra("launchOnDismiss", false)
+                        )
+                    }
                 }
 
                 // Build payload from activity extras

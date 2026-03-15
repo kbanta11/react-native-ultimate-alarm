@@ -26,6 +26,13 @@ class AlarmService : Service() {
     private var wakeLock: PowerManager.WakeLock? = null
     private var audioFocusRequest: AudioFocusRequest? = null
     private var currentAlarmId: String? = null
+    private var currentTitle: String? = null
+    private var currentMessage: String? = null
+    private var currentSnoozeEnabled: Boolean = false
+    private var currentSnoozeDuration: Int = 300
+    private var currentLaunchOnDismiss: Boolean = false
+    private var currentRepeatWeekdays: IntArray? = null
+    private var currentTimeOfDayMs: Long = 0
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -46,6 +53,13 @@ class AlarmService : Service() {
         val launchOnDismiss = intent.getBooleanExtra("launchOnDismiss", false)
 
         currentAlarmId = id
+        currentTitle = title
+        currentMessage = message
+        currentSnoozeEnabled = snoozeEnabled
+        currentSnoozeDuration = snoozeDuration
+        currentLaunchOnDismiss = launchOnDismiss
+        currentRepeatWeekdays = intent.getIntArrayExtra("repeatWeekdays")
+        currentTimeOfDayMs = intent.getLongExtra("timeOfDayMs", 0)
 
         // Start as foreground service
         val notification = buildNotification(id, title, message, snoozeEnabled, snoozeDuration, launchOnDismiss)
@@ -105,6 +119,13 @@ class AlarmService : Service() {
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
                 putExtra("alarm_action", "dismiss")
                 putExtra("alarm_id", id)
+                putExtra("repeatWeekdays", currentRepeatWeekdays)
+                putExtra("timeOfDayMs", currentTimeOfDayMs)
+                putExtra("title", currentTitle)
+                putExtra("message", currentMessage)
+                putExtra("snoozeEnabled", currentSnoozeEnabled)
+                putExtra("snoozeDuration", currentSnoozeDuration)
+                putExtra("launchOnDismiss", currentLaunchOnDismiss)
             }
             if (launchIntent != null) {
                 PendingIntent.getActivity(
@@ -132,6 +153,8 @@ class AlarmService : Service() {
                 putExtra("snoozeDuration", snoozeDuration)
                 putExtra("snoozeEnabled", snoozeEnabled)
                 putExtra("launchOnDismiss", launchOnDismiss)
+                putExtra("repeatWeekdays", currentRepeatWeekdays)
+                putExtra("timeOfDayMs", currentTimeOfDayMs)
             }
             PendingIntent.getBroadcast(
                 this,
@@ -195,6 +218,13 @@ class AlarmService : Service() {
         val intent = Intent(this, AlarmReceiver::class.java).apply {
             action = AlarmReceiver.ACTION_DISMISS
             putExtra("id", id)
+            putExtra("title", currentTitle)
+            putExtra("message", currentMessage)
+            putExtra("snoozeEnabled", currentSnoozeEnabled)
+            putExtra("snoozeDuration", currentSnoozeDuration)
+            putExtra("launchOnDismiss", currentLaunchOnDismiss)
+            putExtra("repeatWeekdays", currentRepeatWeekdays)
+            putExtra("timeOfDayMs", currentTimeOfDayMs)
         }
         return PendingIntent.getBroadcast(
             this,
@@ -323,8 +353,19 @@ class AlarmService : Service() {
             try {
                 Thread.sleep(AUTO_STOP_SECONDS * 1000L)
                 if (currentAlarmId == id) {
-                    Log.d(TAG, "Auto-stopping alarm id=$id after ${AUTO_STOP_SECONDS}s")
-                    stopSelf()
+                    Log.d(TAG, "Auto-snoozing alarm id=$id after ${AUTO_STOP_SECONDS}s")
+                    val snoozeIntent = Intent(this, AlarmReceiver::class.java).apply {
+                        action = AlarmReceiver.ACTION_SNOOZE
+                        putExtra("id", id)
+                        putExtra("title", currentTitle)
+                        putExtra("message", currentMessage)
+                        putExtra("snoozeEnabled", currentSnoozeEnabled)
+                        putExtra("snoozeDuration", currentSnoozeDuration)
+                        putExtra("launchOnDismiss", currentLaunchOnDismiss)
+                        putExtra("repeatWeekdays", currentRepeatWeekdays)
+                        putExtra("timeOfDayMs", currentTimeOfDayMs)
+                    }
+                    sendBroadcast(snoozeIntent)
                 }
             } catch (e: InterruptedException) {
                 Log.d(TAG, "Auto-stop thread interrupted")
@@ -366,5 +407,12 @@ class AlarmService : Service() {
         releaseWakeLock()
 
         currentAlarmId = null
+        currentTitle = null
+        currentMessage = null
+        currentSnoozeEnabled = false
+        currentSnoozeDuration = 300
+        currentLaunchOnDismiss = false
+        currentRepeatWeekdays = null
+        currentTimeOfDayMs = 0
     }
 }
