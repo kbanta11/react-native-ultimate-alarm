@@ -5,6 +5,9 @@ public class UltimateAlarmModule: Module {
     public func definition() -> ModuleDefinition {
         Name("UltimateAlarm")
 
+        // Events that this module can send to JS
+        Events("UltimateAlarm.dismiss", "UltimateAlarm.snooze")
+
         // MARK: - Check AlarmKit Availability
         AsyncFunction("hasAlarmKit") { () -> Bool in
             if #available(iOS 16.0, *) {

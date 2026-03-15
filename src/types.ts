@@ -33,6 +33,8 @@ export interface AlarmConfig {
   repeat?: RepeatConfig;
   /** Custom data to pass through alarm events */
   data?: Record<string, any>;
+  /** If true, tapping dismiss on the notification opens the app (default: false) */
+  launchOnDismiss?: boolean;
 }
 
 /**

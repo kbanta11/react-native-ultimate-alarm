@@ -158,6 +158,25 @@ class UltimateAlarmClass {
   }
 
   /**
+   * Dismiss a currently ringing alarm (stops sound and notification)
+   *
+   * Use this when the user taps "Dismiss" in your custom alarm UI.
+   * Unlike cancelAlarm(), this stops the active alarm sound/service
+   * rather than canceling a future scheduled alarm.
+   *
+   * @param alarmId - The ID of the alarm to dismiss
+   *
+   * @example
+   * ```typescript
+   * await UltimateAlarm.dismissAlarm('morning-alarm');
+   * ```
+   */
+  async dismissAlarm(alarmId: string): Promise<void> {
+    const impl = await this.detectImplementation();
+    return NativeUltimateAlarm.dismissAlarm(impl, alarmId);
+  }
+
+  /**
    * Cancel an alarm by ID
    *
    * @param alarmId - The ID of the alarm to cancel
