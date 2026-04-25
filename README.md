@@ -22,7 +22,7 @@ Stop juggling multiple packages and platform-specific code. `react-native-ultima
 
 ## Installation
 
-### From npm (Coming Soon)
+### From npm
 
 ```bash
 npm install react-native-ultimate-alarm

@@ -45,13 +45,16 @@
     "ios",
     "android"
   ],
-  "repository": "https://github.com/kylemichaelreaves/react-native-ultimate-alarm",
-  "author": "Kyle <your@email.com>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kbanta11/react-native-ultimate-alarm.git"
+  },
+  "author": "Kyle Banta <kbantadevelopment@gmail.com>",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/kylemichaelreaves/react-native-ultimate-alarm/issues"
+    "url": "https://github.com/kbanta11/react-native-ultimate-alarm/issues"
   },
-  "homepage": "https://github.com/kylemichaelreaves/react-native-ultimate-alarm#readme",
+  "homepage": "https://github.com/kbanta11/react-native-ultimate-alarm#readme",
   "publishConfig": {
     "registry": "https://registry.npmjs.org/"
   },
