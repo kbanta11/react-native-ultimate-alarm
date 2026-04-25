@@ -81,7 +81,7 @@ class NativeUltimateAlarmModule {
   }
 
   addEventListener(
-    event: 'dismiss' | 'snooze',
+    event: 'dismiss' | 'snooze' | 'trigger',
     callback: (event: AlarmEvent) => void
   ): { remove: () => void } {
     const subscription = eventEmitter.addListener(

@@ -287,7 +287,7 @@ class UltimateAlarmClass {
   /**
    * Add event listener for alarm events
    *
-   * @param event - Event type ('dismiss' or 'snooze')
+   * @param event - Event type ('dismiss', 'snooze', or 'trigger')
    * @param callback - Event handler
    * @returns Subscription object with remove() method
    *
@@ -304,7 +304,7 @@ class UltimateAlarmClass {
    * ```
    */
   addEventListener(
-    event: 'dismiss' | 'snooze',
+    event: 'dismiss' | 'snooze' | 'trigger',
     callback: (event: AlarmEvent) => void
   ): { remove: () => void } {
     return NativeUltimateAlarm.addEventListener(event, callback);

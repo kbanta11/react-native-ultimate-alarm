@@ -164,10 +164,15 @@ class AlarmService : Service() {
             )
         } else null
 
-        // Full-screen intent to launch app
+        // Full-screen intent to launch app (also used as contentIntent for notification body tap).
+        // CLEAR_TOP + SINGLE_TOP: if the activity exists, bring it to front and deliver
+        // the intent via onNewIntent (no destroy/recreate). If it doesn't exist, create
+        // it normally. Without SINGLE_TOP, CLEAR_TOP destroys and recreates the activity,
+        // causing multiple React mounts that consume/lose the alarm payload.
         val launchIntent = packageManager.getLaunchIntentForPackage(packageName)?.apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
             putExtra("alarm_id", id)
+            putExtra("alarm_action", "trigger")
         }
 
         val fullScreenPendingIntent = launchIntent?.let {
@@ -265,16 +270,8 @@ class AlarmService : Service() {
         audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
 
         audioManager?.let { am ->
-            // Save original volume
+            // Respect the system's current alarm volume — don't override it.
             originalVolume = am.getStreamVolume(AudioManager.STREAM_ALARM)
-
-            // Set to max volume
-            val maxVolume = am.getStreamMaxVolume(AudioManager.STREAM_ALARM)
-            am.setStreamVolume(
-                AudioManager.STREAM_ALARM,
-                maxVolume,
-                AudioManager.FLAG_SHOW_UI or AudioManager.FLAG_PLAY_SOUND
-            )
 
             // Request audio focus
             val attributes = AudioAttributes.Builder()
@@ -390,10 +387,8 @@ class AlarmService : Service() {
         // Restore volume and abandon audio focus
         audioManager?.let { am ->
             try {
-                am.setStreamVolume(AudioManager.STREAM_ALARM, originalVolume, 0)
-            } catch (e: Exception) {
-                Log.e(TAG, "Error restoring volume: ${e.message}")
-            }
+                // Volume not modified — nothing to restore
+            } catch (_: Exception) {}
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 audioFocusRequest?.let { am.abandonAudioFocusRequest(it) }

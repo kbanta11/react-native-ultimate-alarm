@@ -38,15 +38,15 @@ class UltimateAlarmModule : Module() {
         Name("UltimateAlarm")
 
         // Events that this module can send (must match names used in AlarmReceiver.emitEvent)
-        Events("UltimateAlarm.dismiss", "UltimateAlarm.snooze")
+        Events("UltimateAlarm.dismiss", "UltimateAlarm.snooze", "UltimateAlarm.trigger")
 
         // Handle new intents when the activity is already running
-        // (e.g. notification dismiss button with launchOnDismiss=true)
+        // (e.g. notification dismiss/snooze buttons, or notification body tap)
         OnNewIntent { intent ->
-            val alarmAction = intent.getStringExtra("alarm_action")
+            val alarmAction = intent.getStringExtra("alarm_action") ?: "trigger"
             val alarmId = intent.getStringExtra("alarm_id")
 
-            if (alarmAction != null && alarmId != null) {
+            if (alarmId != null) {
                 val context = appContext.reactContext
                 if (context != null && alarmAction == "dismiss") {
                     val serviceIntent = Intent(context, AlarmService::class.java)
