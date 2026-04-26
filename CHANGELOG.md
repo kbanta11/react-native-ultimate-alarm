@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-04-25
+
+### Fixed
+- Tighten `peerDependencies` so npm cannot hoist an incompatible
+  `expo-modules-core`. The previous `>=2.0.0` constraint allowed
+  much newer versions to be hoisted, causing API mismatches against
+  the `expo-modules-core` that ships with `expo` itself (e.g. SDK 54
+  ships `expo-modules-core@3.x`, but npm could resolve `55.x` for
+  this package and break the Gradle build with `ConstantsService`
+  not implementing `val constants` and similar errors).
+- Pin to the SDK 54 versions of `expo` (`^54.0.0`) and
+  `expo-modules-core` (`^3.0.0`); raise `react` to `>=18.0.0` and
+  `react-native` to `>=0.74.0` to match what's actually been tested.
+
 ## [0.1.0] - 2026-02-13
 
 ### Added
