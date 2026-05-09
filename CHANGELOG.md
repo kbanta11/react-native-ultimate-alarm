@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-05-09
+
+### Fixed
+- **Android boot reschedule for repeating alarms.** Previously, if a
+  device was off when an alarm was due to fire, `BootReceiver` deleted
+  the alarm rather than honoring the user's recurrence intent. Now,
+  past-due alarms with a `repeat.weekdays` config are advanced to the
+  next matching weekday at the same time-of-day. Past-due one-shot
+  alarms are still dropped (their fire time has lapsed and is no
+  longer recoverable).
+- `BootReceiver` now also re-arms alarms after `MY_PACKAGE_REPLACED`
+  so a Play Store update can't silently lose scheduled alarms.
+- Re-arming a future alarm at boot now propagates `launchOnDismiss`,
+  `repeat.weekdays`, and `timeOfDayMs` so the rescheduled alarm
+  behaves identically to the original.
+- Transient `*-snooze-*` entries in storage are now cleaned up on
+  boot rather than being incorrectly re-armed.
+
+### Removed
+- `BootReceiver` no longer branches on `TIME_CHANGED` /
+  `TIMEZONE_CHANGED`. Those actions were never registered in the
+  manifest, and reacting to them is more error-prone than helpful.
+
 ## [0.1.1] - 2026-04-25
 
 ### Fixed
